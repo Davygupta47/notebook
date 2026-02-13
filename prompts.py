@@ -324,9 +324,7 @@ If the notebook is already correct, return it unchanged.
 Return ONLY the complete JSON array of cells (whether modified or not). No explanation, no markdown fencing.
 """
 
-# ---------------------------------------------------------------------------
-# Step 5: Fix Runtime Errors
-# ---------------------------------------------------------------------------
+# To Fix Runtime Errors
 FIX_ERRORS_PROMPT_TEMPLATE = """\
 You are debugging a Jupyter notebook that implements a research paper using PyTorch.
 
