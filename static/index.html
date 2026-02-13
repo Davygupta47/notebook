@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paper to Notebook</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface2: #1c1c1c;
+    --surface3: #252525;
+    --border: #2a2a2a;
+    --text: #e5e5e5;
+    --text-dim: #888;
+    --text-muted: #555;
+    --accent: #6c63ff;
+    --accent-glow: rgba(108, 99, 255, 0.3);
+    --green: #22c55e;
+    --green-dim: rgba(34, 197, 94, 0.12);
+    --red: #ef4444;
+    --orange: #f59e0b;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-y: auto;
+  }
+
+  .wrapper {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  /* === HEADER === */
+  .header {
+    text-align: center;
+    margin-bottom: 36px;
+    animation: fadeDown 0.5s ease;
+  }
+  @keyframes fadeDown { from { opacity:0; transform:translateY(-12px); } to { opacity:1; transform:translateY(0); } }
+
+  .header h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .header p {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    margin-top: 6px;
+  }
+  .header .badge {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 6px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+  .header .badge:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* === UPLOAD ZONE === */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    animation: fadeUp 0.5s ease 0.1s both;
+  }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(108,99,255,0.04);
+  }
+  .upload-zone.has-file {
+    border-color: var(--green);
+    border-style: solid;
+    background: var(--green-dim);
+    padding: 20px 24px;
+  }
+
+  .upload-icon { font-size: 2.2rem; margin-bottom: 10px; display: block; }
+  .upload-text { color: var(--text-dim); font-size: 0.88rem; line-height: 1.5; }
+  .upload-text strong { color: var(--text); }
+
+  .file-info { display: flex; align-items: center; gap: 12px; }
+  .file-info .file-icon { font-size: 1.4rem; }
+  .file-info .file-details { text-align: left; flex: 1; }
+  .file-info .file-name { font-weight: 600; font-size: 0.9rem; word-break: break-all; }
+  .file-info .file-size { color: var(--text-dim); font-size: 0.78rem; margin-top: 2px; }
+  .file-info .remove-btn {
+    background: none; border: none; color: var(--text-dim); cursor: pointer;
+    font-size: 1.2rem; padding: 4px 8px; border-radius: 6px; transition: all 0.15s;
+  }
+  .file-info .remove-btn:hover { background: var(--surface3); color: var(--red); }
+
+  input[type="file"] { display: none; }
+
+  /* === BUTTONS === */
+  .btn {
+    display: block; width: 100%; padding: 14px; border: none; border-radius: var(--radius);
+    font-size: 0.95rem; font-weight: 600; cursor: pointer; margin-top: 16px;
+    transition: all 0.2s ease;
+  }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover:not(:disabled) {
+    box-shadow: 0 0 24px var(--accent-glow);
+    transform: translateY(-1px);
+  }
+  .btn-primary:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn-primary:active:not(:disabled) { transform: translateY(0); }
+
+  .btn-download {
+    background: var(--green); color: white; text-decoration: none; text-align: center;
+    display: none;
+  }
+  .btn-download.active { display: block; animation: fadeUp 0.3s ease; }
+  .btn-download:hover { box-shadow: 0 0 24px rgba(34,197,94,0.3); transform: translateY(-1px); }
+
+  /* === PROGRESS STEPS === */
+  .steps { margin-top: 28px; display: none; }
+  .steps.active { display: block; animation: fadeUp 0.3s ease; }
+
+  .step {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 12px 0; position: relative;
+  }
+  .step:not(:last-child)::after {
+    content: ''; position: absolute; left: 14px; top: 40px; bottom: 0;
+    width: 2px; background: var(--border); transition: background 0.3s;
+  }
+  .step.completed:not(:last-child)::after { background: var(--green); }
+  .step.active:not(:last-child)::after {
+    background: linear-gradient(to bottom, var(--accent), var(--border));
+  }
+
+  .step-dot {
+    width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.72rem; font-weight: 700; flex-shrink: 0;
+    background: var(--surface); color: var(--text-muted); transition: all 0.3s;
+  }
+  .step.active .step-dot {
+    border-color: var(--accent); color: var(--accent); background: var(--bg);
+    box-shadow: 0 0 12px var(--accent-glow);
+    animation: stepPulse 2s ease-in-out infinite;
+  }
+  .step.completed .step-dot {
+    border-color: var(--green); background: var(--green); color: white;
+    box-shadow: none; animation: none;
+  }
+  @keyframes stepPulse {
+    0%, 100% { box-shadow: 0 0 8px var(--accent-glow); }
+    50% { box-shadow: 0 0 20px var(--accent-glow); }
+  }
+
+  .step-content { flex: 1; min-width: 0; padding-top: 4px; }
+  .step-name {
+    font-weight: 600; font-size: 0.88rem; color: var(--text-muted);
+    transition: color 0.3s;
+  }
+  .step.active .step-name { color: var(--text); }
+  .step.completed .step-name { color: var(--text); }
+  .step-detail {
+    font-size: 0.78rem; color: var(--text-dim); margin-top: 3px;
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* === SPINNER (inline, small) === */
+  .spinner-inline {
+    display: none; align-items: center; justify-content: center;
+    gap: 12px; margin-top: 24px; padding: 16px;
+    color: var(--text-dim); font-size: 0.85rem;
+  }
+  .spinner-inline.active { display: flex; animation: fadeUp 0.3s ease; }
+
+  .spinner-dots { display: flex; gap: 5px; }
+  .spinner-dots span {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+    animation: dotBounce 1.4s ease-in-out infinite;
+  }
+  .spinner-dots span:nth-child(2) { animation-delay: 0.16s; }
+  .spinner-dots span:nth-child(3) { animation-delay: 0.32s; }
+  @keyframes dotBounce {
+    0%, 80%, 100% { opacity: 0.25; transform: scale(0.8); }
+    40% { opacity: 1; transform: scale(1.1); }
+  }
+
+  /* === ACTIVITY FEED === */
+  .activity-feed { margin-top: 24px; display: none; }
+  .activity-feed.active { display: block; }
+
+  .activity-card {
+    margin-bottom: 16px; padding: 16px 18px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); animation: cardIn 0.4s ease;
+  }
+  @keyframes cardIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+  .activity-card .card-label {
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--accent); font-weight: 600; margin-bottom: 6px;
+  }
+  .activity-card h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 6px; }
+  .activity-card p { font-size: 0.84rem; color: var(--text-dim); line-height: 1.5; }
+
+  .meta { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .meta-tag {
+    font-size: 0.72rem; padding: 3px 10px;
+    background: var(--surface3); border-radius: 20px; color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+
+  .code-preview {
+    background: #0d1117; border-radius: var(--radius-sm); padding: 12px 14px;
+    font-family: var(--mono); font-size: 0.76rem; color: #c9d1d9;
+    overflow-x: auto; white-space: pre-wrap; word-break: break-word;
+    max-height: 200px; overflow-y: auto; line-height: 1.5;
+    border: 1px solid #21262d; margin-top: 10px;
+  }
+
+  .exec-error {
+    background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15);
+    border-radius: var(--radius-sm); padding: 12px 14px; margin-top: 8px;
+  }
+  .exec-error .err-label { color: var(--red); font-size: 0.72rem; font-weight: 600; margin-bottom: 4px; }
+  .exec-error pre {
+    font-family: var(--mono); font-size: 0.72rem; color: var(--red);
+    white-space: pre-wrap; word-break: break-word; opacity: 0.8;
+  }
+
+  .exec-success {
+    background: var(--green-dim); border: 1px solid rgba(34,197,94,0.2);
+    border-radius: var(--radius-sm); padding: 14px; text-align: center; margin-top: 8px;
+  }
+  .exec-success span { color: var(--green); font-weight: 600; font-size: 0.9rem; }
+
+  /* === ERROR BOX === */
+  .error-box {
+    margin-top: 16px; padding: 12px 16px; background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.2); border-radius: var(--radius-sm);
+    color: var(--red); font-size: 0.85rem; display: none;
+  }
+  .error-box.active { display: block; animation: fadeUp 0.2s ease; }
+
+  /* === DONE BANNER === */
+  .done-banner {
+    display: none; text-align: center; padding: 24px;
+    margin-top: 24px; border-radius: var(--radius);
+    background: linear-gradient(135deg, rgba(34,197,94,0.08), rgba(108,99,255,0.08));
+    border: 1px solid rgba(34,197,94,0.15);
+  }
+  .done-banner.active { display: block; animation: fadeUp 0.4s ease; }
+  .done-banner .done-check {
+    font-size: 2rem; margin-bottom: 8px; display: block;
+    animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
+  .done-banner p { color: var(--text-dim); font-size: 0.85rem; }
+  .done-banner strong { color: var(--text); }
+
+  /* === API KEY === */
+  .api-key-section {
+    margin-top: 16px;
+    animation: fadeUp 0.5s ease 0.15s both;
+  }
+  .api-key-label {
+    font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; display: block;
+  }
+  .api-key-row { display: flex; gap: 8px; }
+  .api-key-input {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 10px 14px; color: var(--text);
+    font-size: 0.85rem; font-family: var(--mono); outline: none; transition: border-color 0.2s;
+  }
+  .api-key-input:focus { border-color: var(--accent); }
+  .api-key-input::placeholder { color: var(--text-muted); }
+  .toggle-key-btn {
+    background: var(--surface3); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    color: var(--text-dim); cursor: pointer; padding: 0 12px; font-size: 0.85rem; transition: all 0.15s;
+  }
+  .toggle-key-btn:hover { background: var(--surface2); color: var(--text); }
+  .api-key-help {
+    font-size: 0.78rem; color: var(--text-muted); margin-top: 8px;
+  }
+  .api-key-help a { color: var(--accent); text-decoration: none; }
+  .api-key-help a:hover { text-decoration: underline; }
+  
+  /* === TOAST NOTIFICATION === */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    color: var(--text);
+    font-size: 0.85rem;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  .toast.active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+  .toast.success {
+    border-color: var(--green);
+    background: var(--green-dim);
+    color: var(--green);
+  }
+
+  /* === THINKING BOX === */
+  .thinking-box {
+    display: none; margin-top: 16px; background: #0d1117;
+    border: 1px solid #21262d; border-radius: var(--radius-sm); overflow: hidden;
+  }
+  .thinking-box.active { display: block; animation: fadeUp 0.3s ease; }
+  .thinking-header {
+    padding: 8px 14px; font-size: 0.72rem; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--text-muted);
+    background: rgba(255,255,255,0.03); border-bottom: 1px solid #21262d;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .thinking-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+    animation: stepPulse 1.5s ease-in-out infinite;
+  }
+  .thinking-content {
+    padding: 12px 14px; font-family: var(--mono); font-size: 0.74rem;
+    color: #8b949e; max-height: 150px; overflow-y: auto;
+    white-space: pre-wrap; word-break: break-word; line-height: 1.5;
+  }
+
+  /* === FOOTER === */
+  .footer {
+    text-align: center; margin-top: 40px; padding-top: 20px;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted); font-size: 0.75rem;
+    line-height: 1.6;
+  }
+  .footer a {
+    color: var(--accent);
+    text-decoration: none;
+    transition: opacity 0.2s;
+  }
+  .footer a:hover {
+    opacity: 0.8;
+  }
+  .footer .emoji {
+    display: inline-block;
+    margin: 0 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+  <div class="header">
+    <h1>Paper to Notebook</h1>
+    <p>Upload a research paper PDF &mdash; get a runnable PyTorch notebook.</p>
+    <a href="https://github.com/Davygupta47/notebook" target="_blank" rel="noopener" class="badge" title="Star on GitHub">
+      ⭐ Star on GitHub
+    </a>
+  </div>
+
+  <!-- Upload -->
+  <div class="upload-zone" id="uploadZone">
+    <div id="uploadPrompt">
+      <span class="upload-icon">&#128196;</span>
+      <p class="upload-text"><strong>Drop your PDF here</strong><br>or click to browse &middot; Max 30 MB</p>
+    </div>
+    <div id="fileInfo" class="file-info" style="display:none;">
+      <span class="file-icon">&#128196;</span>
+      <div class="file-details">
+        <div class="file-name" id="fileName"></div>
+        <div class="file-size" id="fileSize"></div>
+      </div>
+      <button class="remove-btn" id="removeBtn" title="Remove">&times;</button>
+    </div>
+    <input type="file" id="fileInput" accept=".pdf">
+  </div>
+
+  <!-- API Key -->
+  <div class="api-key-section">
+    <label class="api-key-label" for="apiKeyInput">Gemini API Key</label>
+    <div class="api-key-row">
+      <input type="password" class="api-key-input" id="apiKeyInput" placeholder="AIza..." autocomplete="off">
+      <button type="button" class="toggle-key-btn" id="toggleKeyBtn" title="Show/hide key">Show</button>
+    </div>
+    <p class="api-key-help">
+      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Get a free API key</a> from Google AI Studio &mdash; it takes 10 seconds.
+    </p>
+  </div>
+
+  <button class="btn btn-primary" id="generateBtn" disabled>Generate Notebook</button>
+
+  <!-- Progress steps -->
+  <div class="steps" id="stepsSection">
+    <div class="step" id="step1"><div class="step-dot">1</div><div class="step-content"><div class="step-name">Analyze paper</div><div class="step-detail" id="step1Detail"></div></div></div>
+    <div class="step" id="step2"><div class="step-dot">2</div><div class="step-content"><div class="step-name">Design implementation</div><div class="step-detail" id="step2Detail"></div></div></div>
+    <div class="step" id="step3"><div class="step-dot">3</div><div class="step-content"><div class="step-name">Generate notebook</div><div class="step-detail" id="step3Detail"></div></div></div>
+    <div class="step" id="step4"><div class="step-dot">4</div><div class="step-content"><div class="step-name">Validate code</div><div class="step-detail" id="step4Detail"></div></div></div>
+  </div>
+
+  <!-- Inline spinner -->
+  <div class="spinner-inline" id="spinner">
+    <div class="spinner-dots"><span></span><span></span><span></span></div>
+    <span id="spinnerLabel">Processing...</span>
+  </div>
+
+  <!-- Thinking box -->
+  <div class="thinking-box" id="thinkingBox">
+    <div class="thinking-header"><span class="thinking-dot"></span> Model thinking</div>
+    <div class="thinking-content" id="thinkingContent"></div>
+  </div>
+
+  <!-- Activity cards (analysis, design, code preview, errors) -->
+  <div class="activity-feed" id="activityFeed"></div>
+
+  <!-- Error -->
+  <div class="error-box" id="errorBox"></div>
+
+  <!-- Done banner -->
+  <div class="done-banner" id="doneBanner">
+    <span class="done-check">&#10003;</span>
+    <p><strong>Notebook ready!</strong><br>All cells executed successfully.</p>
+  </div>
+
+  <!-- Download buttons -->
+  <a class="btn btn-download" id="draftBtn" href="#" style="background:var(--accent);">Download Draft .ipynb</a>
+  <a class="btn btn-download" id="downloadBtn" href="#">Download Validated .ipynb</a>
+
+  <div class="footer">
+    <div>Powered by <a href="https://ai.google.dev/" target="_blank" rel="noopener">Google Gemini</a> <span class="emoji">✨</span></div>
+    <div style="margin-top: 8px;">Real PyTorch implementations &middot; Educational notebooks &middot; Open source</div>
+    <div style="margin-top: 8px;">
+      <a href="https://github.com/Davygupta47/notebook" target="_blank" rel="noopener">GitHub</a> &middot;
+      <a href="https://github.com/Davygupta47/notebook/issues" target="_blank" rel="noopener">Report Issue</a> &middot;
+      Made with <span class="emoji">❤️</span> by <a href="https://github.com/Davygupta47" target="_blank" rel="noopener">@Davygupta47</a>
+    </div>
+  </div>
+
+  <!-- Toast notification -->
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+const uploadPrompt = document.getElementById('uploadPrompt');
+const fileInfo = document.getElementById('fileInfo');
+const fileName = document.getElementById('fileName');
+const fileSize = document.getElementById('fileSize');
+const removeBtn = document.getElementById('removeBtn');
+const apiKeyInput = document.getElementById('apiKeyInput');
+const toggleKeyBtn = document.getElementById('toggleKeyBtn');
+const generateBtn = document.getElementById('generateBtn');
+const draftBtn = document.getElementById('draftBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const stepsSection = document.getElementById('stepsSection');
+const errorBox = document.getElementById('errorBox');
+const spinner = document.getElementById('spinner');
+const spinnerLabel = document.getElementById('spinnerLabel');
+const thinkingBox = document.getElementById('thinkingBox');
+const thinkingContent = document.getElementById('thinkingContent');
+const activityFeed = document.getElementById('activityFeed');
+const doneBanner = document.getElementById('doneBanner');
+const toastEl = document.getElementById('toast');
+
+let selectedFile = null;
+
+// --- Toast notifications ---
+function showToast(message, type = 'info') {
+  toastEl.textContent = message;
+  toastEl.className = `toast ${type} active`;
+  setTimeout(() => {
+    toastEl.classList.remove('active');
+  }, 3000);
+}
+
+// --- API Key handling ---
+// Load saved key from localStorage
+const savedKey = localStorage.getItem('gemini_api_key');
+if (savedKey) { apiKeyInput.value = savedKey; }
+
+apiKeyInput.addEventListener('input', updateGenerateBtn);
+toggleKeyBtn.addEventListener('click', () => {
+  if (apiKeyInput.type === 'password') {
+    apiKeyInput.type = 'text';
+    toggleKeyBtn.textContent = 'Hide';
+  } else {
+    apiKeyInput.type = 'password';
+    toggleKeyBtn.textContent = 'Show';
+  }
+});
+
+function updateGenerateBtn() {
+  generateBtn.disabled = !selectedFile || !apiKeyInput.value.trim();
+}
+
+// --- File handling ---
+uploadZone.addEventListener('click', (e) => {
+  if (e.target === removeBtn || removeBtn.contains(e.target)) return;
+  fileInput.click();
+});
+fileInput.addEventListener('change', () => { if (fileInput.files.length) selectFile(fileInput.files[0]); });
+uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', (e) => { e.preventDefault(); uploadZone.classList.remove('drag-over'); if (e.dataTransfer.files.length) selectFile(e.dataTransfer.files[0]); });
+removeBtn.addEventListener('click', (e) => { e.stopPropagation(); clearFile(); });
+
+function selectFile(file) {
+  if (!file.name.toLowerCase().endsWith('.pdf')) { 
+    showError('Please select a PDF file.'); 
+    showToast('Please select a PDF file', 'error');
+    return; 
+  }
+  const mb = file.size / (1024 * 1024);
+  if (mb > 30) { 
+    showError(`File too large (${mb.toFixed(1)} MB). Max is 30 MB.`); 
+    showToast(`File too large: ${mb.toFixed(1)} MB`, 'error');
+    return; 
+  }
+  selectedFile = file;
+  fileName.textContent = file.name;
+  fileSize.textContent = mb < 1 ? `${(file.size / 1024).toFixed(0)} KB` : `${mb.toFixed(1)} MB`;
+  uploadPrompt.style.display = 'none';
+  fileInfo.style.display = 'flex';
+  uploadZone.classList.add('has-file');
+  updateGenerateBtn();
+  hideError();
+  downloadBtn.classList.remove('active');
+  draftBtn.classList.remove('active');
+  doneBanner.classList.remove('active');
+  showToast(`${file.name} selected`, 'success');
+}
+
+function clearFile() {
+  selectedFile = null; fileInput.value = '';
+  uploadPrompt.style.display = ''; fileInfo.style.display = 'none';
+  uploadZone.classList.remove('has-file'); updateGenerateBtn();
+}
+
+// --- Generation ---
+generateBtn.addEventListener('click', handleGenerate);
+
+async function handleGenerate() {
+  if (!selectedFile) return;
+  const userKey = apiKeyInput.value.trim();
+  if (!userKey) { showError('Please enter your Gemini API key.'); return; }
+
+  // Save key to localStorage for next time
+  localStorage.setItem('gemini_api_key', userKey);
+
+  hideError();
+  draftBtn.classList.remove('active');
+  downloadBtn.classList.remove('active');
+  doneBanner.classList.remove('active');
+  activityFeed.innerHTML = '';
+  activityFeed.classList.remove('active');
+  thinkingBox.classList.remove('active');
+  thinkingContent.textContent = '';
+  stepsSection.classList.add('active');
+  generateBtn.disabled = true;
+  generateBtn.textContent = 'Generating...';
+  resetSteps();
+  updateStep(1, 'Reading PDF and extracting structure...');
+  showSpinner('Analyzing paper structure...');
+
+  const formData = new FormData();
+  formData.append('file', selectedFile);
+  formData.append('api_key', userKey);
+
+  try {
+    const response = await fetch('/api/generate', { method: 'POST', body: formData });
+    if (response.status === 429) { showError('Rate limit reached. Please try again later.'); resetBtn(); return; }
+    if (response.status === 413) { showError('PDF too large. Maximum is 30 MB.'); resetBtn(); return; }
+    if (!response.ok) { showError(`Server error (${response.status}).`); resetBtn(); return; }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop();
+
+      for (const part of parts) {
+        if (part.startsWith('event: thinking')) {
+          const dl = part.split('\n').find(l => l.startsWith('data: '));
+          if (dl) handleThinking(JSON.parse(dl.slice(6)));
+        } else if (part.startsWith('event: progress')) {
+          const dl = part.split('\n').find(l => l.startsWith('data: '));
+          if (dl) handleProgress(JSON.parse(dl.slice(6)));
+        } else if (part.startsWith('event: draft_ready')) {
+          const dl = part.split('\n').find(l => l.startsWith('data: '));
+          if (dl) handleDraftReady(JSON.parse(dl.slice(6)));
+        } else if (part.startsWith('event: complete')) {
+          const dl = part.split('\n').find(l => l.startsWith('data: '));
+          if (dl) handleComplete(JSON.parse(dl.slice(6)));
+        } else if (part.startsWith('event: error')) {
+          const dl = part.split('\n').find(l => l.startsWith('data: '));
+          if (dl) handleError(JSON.parse(dl.slice(6)));
+        }
+      }
+    }
+  } catch (err) { showError('Connection lost. Please try again.'); resetBtn(); }
+}
+
+// --- Progress ---
+const spinnerTexts = {
+  1: 'Analyzing paper structure...',
+  2: 'Designing architecture...',
+  3: 'Writing PyTorch code...',
+  4: 'Reviewing for errors...',
+};
+
+function handleThinking(data) {
+  thinkingBox.classList.add('active');
+  thinkingContent.textContent += data.text;
+  // Keep only last 2000 chars to avoid memory bloat
+  if (thinkingContent.textContent.length > 2000) {
+    thinkingContent.textContent = thinkingContent.textContent.slice(-1500);
+  }
+  // Auto-scroll to bottom
+  thinkingContent.scrollTop = thinkingContent.scrollHeight;
+}
+
+function handleProgress(data) {
+  const { step, name, detail, extra } = data;
+  updateStep(step, detail);
+  showSpinner(spinnerTexts[step] || 'Processing...');
+
+  if (!extra) return;
+  activityFeed.classList.add('active');
+
+  if (extra.type === 'analysis') {
+    addCard('Paper Analysis', extra.title,
+      `<p>${esc(extra.problem || '')}</p>
+       <p style="margin-top:6px;"><strong>Key insight:</strong> ${esc(extra.insight || '')}</p>
+       <div class="meta"><span class="meta-tag">${extra.algorithms} algorithm(s)</span></div>`);
+  }
+  else if (extra.type === 'design') {
+    addCard('Architecture', extra.notebook_title || 'Implementation Plan',
+      `<div class="meta">
+         <span class="meta-tag">${esc(extra.model_type || 'Transformer')}</span>
+         <span class="meta-tag">dim=${esc(String(extra.embed_dim || '?'))}</span>
+         <span class="meta-tag">${esc(String(extra.num_layers || '?'))} layers</span>
+         <span class="meta-tag">${esc(String(extra.num_heads || '?'))} heads</span>
+       </div>`);
+  }
+  else if (extra.type === 'cells_generated') {
+    let html = '';
+    const previews = (extra.previews || []).slice(0, 3);
+    for (const p of previews) {
+      if (p.type === 'code') {
+        html += `<div class="code-preview">${esc(p.preview)}${p.preview.length >= 300 ? '...' : ''}</div>`;
+      }
+    }
+    if (extra.num_cells > 3) {
+      html += `<p style="margin-top:8px;color:var(--text-muted);font-size:0.78rem;">+ ${extra.num_cells - 3} more cells</p>`;
+    }
+    addCard('Notebook Generated', `${extra.num_cells} cells (${extra.code_cells} code)`, html);
+  }
+}
+
+function handleDraftReady(data) {
+  draftBtn.href = `/api/download/${data.job_id}`;
+  draftBtn.classList.add('active');
+  generateBtn.textContent = 'Validating...';
+  showToast('Draft notebook ready!', 'success');
+  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+}
+
+function handleComplete(data) {
+  completeAllSteps();
+  hideSpinner();
+  thinkingBox.classList.remove('active');
+  draftBtn.classList.remove('active');
+  downloadBtn.href = `/api/download/${data.job_id}`;
+  downloadBtn.classList.add('active');
+  generateBtn.textContent = 'Generate Another';
+  updateGenerateBtn();
+  showToast('Notebook ready!', 'success');
+}
+
+function handleError(data) {
+  showError(`Generation failed: ${data.error}`);
+  resetBtn();
+  hideSpinner();
+}
+
+// --- Steps ---
+function resetSteps() {
+  for (let i = 1; i <= 4; i++) {
+    document.getElementById(`step${i}`).className = 'step';
+    document.getElementById(`step${i}Detail`).textContent = '';
+  }
+}
+
+function updateStep(step, detail) {
+  for (let i = 1; i < step; i++) {
+    const el = document.getElementById(`step${i}`);
+    el.className = 'step completed';
+    el.querySelector('.step-dot').textContent = '\u2713';
+  }
+  const cur = document.getElementById(`step${step}`);
+  cur.className = 'step active';
+  document.getElementById(`step${step}Detail`).textContent = detail;
+}
+
+function completeAllSteps() {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById(`step${i}`);
+    el.className = 'step completed';
+    el.querySelector('.step-dot').textContent = '\u2713';
+  }
+}
+
+// --- Spinner with elapsed timer ---
+let spinnerTimer = null;
+let spinnerStart = 0;
+let spinnerBaseText = '';
+
+function showSpinner(text) {
+  spinner.classList.add('active');
+  spinnerBaseText = text;
+  spinnerLabel.textContent = text;
+  // Reset timer for each new step
+  if (spinnerTimer) clearInterval(spinnerTimer);
+  spinnerStart = Date.now();
+  spinnerTimer = setInterval(() => {
+    const secs = Math.floor((Date.now() - spinnerStart) / 1000);
+    spinnerLabel.textContent = `${spinnerBaseText} (${secs}s)`;
+  }, 1000);
+}
+function hideSpinner() {
+  spinner.classList.remove('active');
+  if (spinnerTimer) { clearInterval(spinnerTimer); spinnerTimer = null; }
+}
+
+// --- Activity cards ---
+function addCard(label, title, bodyHtml) {
+  const div = document.createElement('div');
+  div.className = 'activity-card';
+  div.innerHTML = `<div class="card-label">${esc(label)}</div><h3>${esc(title)}</h3>${bodyHtml}`;
+  activityFeed.appendChild(div);
+  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+}
+
+// --- Utilities ---
+function showError(msg) { errorBox.textContent = msg; errorBox.classList.add('active'); }
+function hideError() { errorBox.classList.remove('active'); }
+function resetBtn() {
+  generateBtn.textContent = 'Generate Notebook';
+  updateGenerateBtn();
+  hideSpinner();
+  thinkingBox.classList.remove('active');
+}
+
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+// --- Keyboard shortcuts ---
+document.addEventListener('keydown', (e) => {
+  // Ctrl/Cmd + Enter to generate
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    if (!generateBtn.disabled) {
+      e.preventDefault();
+      handleGenerate();
+    }
+  }
+  // Escape to clear file
+  if (e.key === 'Escape' && selectedFile) {
+    clearFile();
+  }
+});
+
+// --- Copy download link functionality ---
+downloadBtn.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  if (downloadBtn.href && downloadBtn.href !== '#') {
+    navigator.clipboard.writeText(window.location.origin + downloadBtn.getAttribute('href'));
+    showToast('Download link copied!', 'success');
+  }
+});
+
+draftBtn.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  if (draftBtn.href && draftBtn.href !== '#') {
+    navigator.clipboard.writeText(window.location.origin + draftBtn.getAttribute('href'));
+    showToast('Draft link copied!', 'success');
+  }
+});
+</script>
+</body>
+</html>
