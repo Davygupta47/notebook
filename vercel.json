@@ -1,19 +1,21 @@
 {
   "version": 2,
   "name": "notebook",
+  "public": true,
   "builds": [
     {
-      "src": "static/index.html",
+      "src": "static/**",
       "use": "@vercel/static"
     }
   ],
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "https://notebook-0ar7.onrender.com/api/$1"
+    },
+    {
       "src": "/(.*)",
       "dest": "/static/index.html"
     }
-  ],
-  "env": {
-    "API_ENDPOINT": "https://your-render-backend.onrender.com"
-  }
+  ]
 }
