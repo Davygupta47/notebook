@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 from fastapi import FastAPI, File, Form, UploadFile, Request, HTTPException
-from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -46,6 +46,20 @@ _generation_semaphore = asyncio.Semaphore(3)
 async def index():
     html_path = Path(__file__).parent / "static" / "index.html"
     return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
+
+
+@app.options("/api/generate")
+async def options_generate():
+    """Handle CORS preflight for /api/generate"""
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "https://notebook-one-sigma.vercel.app",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Credentials": "true",
+        }
+    )
 
 
 @app.post("/api/generate")
@@ -153,7 +167,14 @@ async def generate(request: Request, file: UploadFile = File(...), api_key: str 
     return StreamingResponse(
         event_stream(),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        headers={
+            "Cache-Control": "no-cache", 
+            "X-Accel-Buffering": "no",
+            "Access-Control-Allow-Origin": "https://notebook-one-sigma.vercel.app",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        },
     )
 
 
