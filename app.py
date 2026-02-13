@@ -25,7 +25,11 @@ app = FastAPI(title="Paper to Notebook", version="1.3", docs_url=None, redoc_url
 # CORS middleware to allow requests from vercel
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://notebook-paper.vercel.app"],  # Update to your Vercel domain
+    allow_origins=[
+        "https://notebook-one-sigma.vercel.app",  
+        "http://localhost:3000",
+        "http://localhost:8000"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
