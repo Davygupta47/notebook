@@ -8,8 +8,11 @@ import tempfile
 import uuid
 from pathlib import Path
 
+
 from fastapi import FastAPI, File, Form, UploadFile, Request, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+
 
 from config import MAX_PDF_SIZE_MB, DEFAULT_MODEL
 from web_pipeline import run_web_pipeline
@@ -17,8 +20,16 @@ from web_pipeline import run_web_pipeline
 # --- Configuration ---
 MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", str(MAX_PDF_SIZE_MB)))
 
-# --- App setup ---
 app = FastAPI(title="Paper to Notebook", version="1.3", docs_url=None, redoc_url=None)
+
+# CORS middleware to allow requests from vercel
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://notebook-paper.vercel.app"],  # Update to your Vercel domain
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Temp directory for generated notebooks
 TEMP_DIR = tempfile.mkdtemp(prefix="paper2nb_")
