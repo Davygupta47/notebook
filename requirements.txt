@@ -1,0 +1,10 @@
+google-genai
+nbformat
+nbconvert
+fastapi
+uvicorn[standard]
+python-multipart
+torch
+numpy
+matplotlib
+ipykernel
