@@ -596,8 +596,9 @@ async function handleGenerate() {
   const formData = new FormData();
   formData.append('file', selectedFile);
   formData.append('api_key', userKey);
-  
-  const API_BASE = "https://notebook-0ar7.onrender.com";
+
+  // Use the correct API endpoint for generation
+  const API_BASE = "https://notebook-0ar7.onrender.com/api/generate";
   try {
     const response = await fetch(API_BASE, { method: 'POST', body: formData });
     if (response.status === 429) { showError('Rate limit reached. Please try again later.'); resetBtn(); return; }
