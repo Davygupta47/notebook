@@ -1,5 +1,6 @@
-"""FastAPI web application for the notebook tool."""
+"""FastAPI web application for the paper-to-notebook tool."""
 from __future__ import annotations
+
 import asyncio
 import json
 import os
@@ -29,7 +30,7 @@ _generation_semaphore = asyncio.Semaphore(3)
 @app.get("/", response_class=HTMLResponse)
 async def index():
     html_path = Path(__file__).parent / "static" / "index.html"
-    return HTMLResponse(content=html_path.read_text())
+    return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
 
 
 @app.post("/api/generate")
