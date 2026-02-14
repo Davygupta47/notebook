@@ -102,7 +102,7 @@ def run_web_pipeline(
     })
 
     # Step 3: Generate Notebook Cells
-    _notify(3, "Generating notebook", "Writing PyTorch code and explanations...")
+    _notify(3, "Generating notebook", "Writing code and explanations...")
     generate_prompt = GENERATE_PROMPT_TEMPLATE.format(
         analysis_json=json.dumps(analysis, indent=2),
         design_json=json.dumps(design, indent=2),

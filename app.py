@@ -124,14 +124,21 @@ async def generate(request: Request, file: UploadFile = File(...), api_key: str 
                     draft_bytes = extra.pop("draft_bytes")
                     # Save draft to disk
                     draft_path = os.path.join(TEMP_DIR, f"{draft_id}.ipynb")
-                    with open(draft_path, "wb") as f:
-                        f.write(draft_bytes)
-                    # Send progress event (without the bytes)
-                    data = {"step": step, "name": name, "detail": detail, "extra": extra}
-                    yield f"event: progress\ndata: {json.dumps(data)}\n\n"
-                    # Send draft_ready event
-                    draft_data = json.dumps({"job_id": draft_id, "size_kb": len(draft_bytes) // 1024})
-                    yield f"event: draft_ready\ndata: {draft_data}\n\n"
+                    try:
+                        with open(draft_path, "wb") as f:
+                            f.write(draft_bytes)
+                        # Confirm file exists before sending event
+                        if os.path.exists(draft_path):
+                            # Send progress event (without the bytes)
+                            data = {"step": step, "name": name, "detail": detail, "extra": extra}
+                            yield f"event: progress\ndata: {json.dumps(data)}\n\n"
+                            # Send draft_ready event
+                            draft_data = json.dumps({"job_id": draft_id, "size_kb": len(draft_bytes) // 1024})
+                            yield f"event: draft_ready\ndata: {draft_data}\n\n"
+                        else:
+                            yield f"event: error\ndata: {json.dumps({'error': 'Draft file not written'})}\n\n"
+                    except Exception as e:
+                        yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
                 else:
                     data = {"step": step, "name": name, "detail": detail}
                     if extra:
