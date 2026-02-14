@@ -202,11 +202,15 @@ REQUIRED SECTIONS (in this EXACT order):
    - How this paper differs from prior work
 
 3. **Imports & Setup** (code)
-   - import torch, torch.nn as nn, torch.optim as optim, torch.nn.functional as F
-   - import numpy as np, matplotlib.pyplot as plt
-   - Set seeds: torch.manual_seed(42), np.random.seed(42)
-   - Set device = torch.device('cpu')
-   - Print PyTorch version
+  - import torch, torch.nn as nn, torch.optim as optim, torch.nn.functional as F
+  - import numpy as np, pandas as pd
+  - import matplotlib.pyplot as plt, seaborn as sns
+  - from sklearn.model_selection import train_test_split (if needed)
+  - from sklearn.metrics import accuracy_score, precision_recall_fscore_support (if needed)
+  - Set seeds: torch.manual_seed(42), np.random.seed(42)
+  - Set device = torch.device('cpu')
+  - Print PyTorch version
+  - Configure matplotlib and seaborn styles for better visualizations
 
 4. **Dataset & Tokenization** (code + markdown)
    - Generate synthetic data that meaningfully tests the algorithm
@@ -279,8 +283,8 @@ CRITICAL RULES:
 - Algorithm functions MUST print intermediate states: tensor shapes, loss values, sample outputs
 - torch.manual_seed(42) and np.random.seed(42) for reproducibility
 - Total notebook runtime must be under 15 minutes on CPU
-- Allowed libraries: torch, numpy, matplotlib, collections, math, random, itertools, functools
-- DO NOT use: tensorflow, sklearn, transformers (huggingface), scipy, pandas
+Allowed libraries: torch, numpy, pandas, matplotlib, seaborn, scikit-learn (sklearn), collections, math, random, itertools, functools
+DO NOT use: tensorflow, transformers (huggingface), scipy
 - Add type hints to all function signatures
 - Add docstrings explaining what each function does and how it relates to the paper
 - Reference specific sections/equations from the paper in comments and markdown
@@ -315,7 +319,7 @@ Check for ALL of the following issues and fix any you find:
 9. **Missing observability**: Training loops must print loss, model functions must log tensor shapes
 10. **Missing seeds**: torch.manual_seed(42) and np.random.seed(42) must be set
 11. **Runtime concerns**: Training loops should complete within ~15 minutes on CPU
-12. **Forbidden imports**: No tensorflow, sklearn, transformers (huggingface), scipy, pandas
+12. **Forbidden imports**: No tensorflow, transformers (huggingface), scipy (allowed: torch, numpy, pandas, matplotlib, seaborn, scikit-learn)
 
 For each issue found, fix it directly in the cells.
 
