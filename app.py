@@ -48,6 +48,18 @@ async def index():
     return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
 
 
+@app.get("/static/favicon.svg")
+async def favicon():
+    favicon_path = Path(__file__).parent / "static" / "favicon.svg"
+    if not favicon_path.exists():
+        raise HTTPException(404, "Favicon not found")
+    return FileResponse(
+        favicon_path,
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
+
+
 @app.options("/api/generate")
 async def options_generate():
     """Handle CORS preflight for /api/generate"""
@@ -113,7 +125,7 @@ async def generate(request: Request, file: UploadFile = File(...), api_key: str 
 
                 # Handle thinking events
                 if event[0] == "thinking":
-                    data = json.dumps({"text": event[1]})
+                    data = json.dumps({"text": event[1]}, ensure_ascii=False)
                     yield f"event: thinking\ndata: {data}\n\n"
                     continue
 
@@ -131,19 +143,19 @@ async def generate(request: Request, file: UploadFile = File(...), api_key: str 
                         if os.path.exists(draft_path):
                             # Send progress event (without the bytes)
                             data = {"step": step, "name": name, "detail": detail, "extra": extra}
-                            yield f"event: progress\ndata: {json.dumps(data)}\n\n"
+                            yield f"event: progress\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
                             # Send draft_ready event
-                            draft_data = json.dumps({"job_id": draft_id, "size_kb": len(draft_bytes) // 1024})
+                            draft_data = json.dumps({"job_id": draft_id, "size_kb": len(draft_bytes) // 1024}, ensure_ascii=False)
                             yield f"event: draft_ready\ndata: {draft_data}\n\n"
                         else:
-                            yield f"event: error\ndata: {json.dumps({'error': 'Draft file not written'})}\n\n"
+                            yield f"event: error\ndata: {json.dumps({'error': 'Draft file not written'}, ensure_ascii=False)}\n\n"
                     except Exception as e:
-                        yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+                        yield f"event: error\ndata: {json.dumps({'error': str(e)}, ensure_ascii=False)}\n\n"
                 else:
                     data = {"step": step, "name": name, "detail": detail}
                     if extra:
                         data["extra"] = extra
-                    yield f"event: progress\ndata: {json.dumps(data)}\n\n"
+                    yield f"event: progress\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
             except asyncio.TimeoutError:
                 yield f": keepalive\n\n"
 
@@ -158,17 +170,17 @@ async def generate(request: Request, file: UploadFile = File(...), api_key: str 
             data = {"step": step, "name": name, "detail": detail}
             if extra:
                 data["extra"] = extra
-            yield f"event: progress\ndata: {json.dumps(data)}\n\n"
+            yield f"event: progress\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
         try:
             notebook_bytes = task.result()
             output_path = os.path.join(TEMP_DIR, f"{job_id}.ipynb")
             with open(output_path, "wb") as f:
                 f.write(notebook_bytes)
-            data = json.dumps({"job_id": job_id, "size_kb": len(notebook_bytes) // 1024})
+            data = json.dumps({"job_id": job_id, "size_kb": len(notebook_bytes) // 1024}, ensure_ascii=False)
             yield f"event: complete\ndata: {data}\n\n"
         except Exception as e:
-            data = json.dumps({"error": str(e)})
+            data = json.dumps({"error": str(e)}, ensure_ascii=False)
             yield f"event: error\ndata: {data}\n\n"
 
     return StreamingResponse(
@@ -196,6 +208,10 @@ async def download(job_id: str):
         path,
         media_type="application/x-ipynb+json",
         filename="generated_notebook.ipynb",
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Credentials": "true",
+        },
     )
 
 
